@@ -1,16 +1,13 @@
 package org.jbpm.test;
 
-import static org.jbpm.test.JbpmAssert.assertProcessInstanceComplete;
 
 import org.drools.runtime.StatefulKnowledgeSession;
 import org.drools.runtime.process.ProcessInstance;
 import org.jbpm.bpmn2.handler.ServiceTaskHandler;
 import org.jbpm.process.workitem.wsht.WSHumanTaskHandler;
-import org.jbpm.test.annotation.HumanTaskSupport;
-import org.jbpm.test.annotation.KnowledgeBase;
-import org.jbpm.test.annotation.KnowledgeSession;
-import org.jbpm.test.annotation.LifeCycle;
-import org.jbpm.test.annotation.WorkItemHandler;
+import org.jbpm.test.annotation.*;
+import static org.jbpm.test.matcher.ProcessStateMatcher.isInState;
+import static org.junit.Assert.*;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -28,13 +25,13 @@ public class JbpmJUnitRunnerTest {
 	@Test
 	public void testRunner() {
 		ProcessInstance instance = session.startProcess("ScriptTask");
-		assertProcessInstanceComplete(instance);
+		assertThat(ProcessInstance.STATE_COMPLETED, isInState(instance));
 	}
 
 	@Test
 	public void testRunner2() {
 		ProcessInstance instance = session.startProcess("ServiceProcess");
-		assertProcessInstanceComplete(instance);
+		assertThat(ProcessInstance.STATE_COMPLETED, isInState(instance));
 	}
 	
 	@Test
@@ -45,7 +42,7 @@ public class JbpmJUnitRunnerTest {
 		taskClient.performLifeCycle("john", "mike", "en-UK", null);
 		taskClient.performLifeCycle("mike", null, "en-UK", null, new LifeCyclePhase[]{LifeCyclePhase.START, LifeCyclePhase.COMPLETE});
 		
-		assertProcessInstanceComplete(instance);
+		assertThat(ProcessInstance.STATE_COMPLETED, isInState(instance));
 	}
 	
 	@Test
@@ -55,6 +52,6 @@ public class JbpmJUnitRunnerTest {
 		
 		taskClient.performLifeCycle("john", null, "en-UK", null);
 		
-		assertProcessInstanceComplete(instance);
+		assertThat(ProcessInstance.STATE_COMPLETED, isInState(instance));
 	}
 }

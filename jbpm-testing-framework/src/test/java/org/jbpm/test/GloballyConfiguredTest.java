@@ -1,10 +1,11 @@
 package org.jbpm.test;
 
-import static org.jbpm.test.JbpmAssert.assertProcessInstanceComplete;
 
 import org.drools.runtime.StatefulKnowledgeSession;
 import org.drools.runtime.process.ProcessInstance;
 import org.jbpm.test.annotation.LifeCycle;
+import static org.jbpm.test.matcher.ProcessStateMatcher.isInState;
+import static org.junit.Assert.*;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -18,13 +19,13 @@ public class GloballyConfiguredTest {
 	@Test
 	public void testRunner() {
 		ProcessInstance instance = session.startProcess("ScriptTask");
-		assertProcessInstanceComplete(instance);
+		assertThat(ProcessInstance.STATE_COMPLETED, isInState(instance));
 	}
 
 	@Test
 	public void testRunner2() {
 		ProcessInstance instance = session.startProcess("ServiceProcess");
-		assertProcessInstanceComplete(instance);
+		assertThat(ProcessInstance.STATE_COMPLETED, isInState(instance));
 	}
 	
 	@Test
@@ -34,7 +35,7 @@ public class GloballyConfiguredTest {
 
 		taskClient.performLifeCycle("john", null, "en-UK", null);
 		
-		assertProcessInstanceComplete(instance);
+		assertThat(ProcessInstance.STATE_COMPLETED, isInState(instance));
 	}
 	
 	@Test
@@ -44,6 +45,6 @@ public class GloballyConfiguredTest {
 		
 		taskClient.performLifeCycle("john", null, "en-UK", null);
 		
-		assertProcessInstanceComplete(instance);
+		assertThat(ProcessInstance.STATE_COMPLETED, isInState(instance));
 	}
 }

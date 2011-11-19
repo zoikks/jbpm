@@ -1,18 +1,18 @@
 package org.jbpm.test.matcher;
 
+
+
+import java.util.regex.Pattern;
 import org.drools.runtime.process.NodeInstance;
+import org.drools.runtime.process.ProcessInstance;
 import org.drools.runtime.process.WorkflowProcessInstance;
 import org.hamcrest.Description;
 import org.hamcrest.Factory;
 import org.hamcrest.Matcher;
-
 import org.jbpm.workflow.instance.impl.NodeInstanceImpl;
 import org.jbpm.workflow.instance.impl.NodeInstanceResolverFactory;
 import org.junit.internal.matchers.TypeSafeMatcher;
 import org.mvel2.MVEL;
-
-import java.util.regex.Pattern;
-
 /**
 * Created by IntelliJ IDEA.
 * User: salaboy
@@ -23,10 +23,10 @@ import java.util.regex.Pattern;
 public class VariableValueMatcher extends TypeSafeMatcher<String> {
 
     private static final Pattern PARAMETER_MATCHER = Pattern.compile("#\\{(\\S+)\\}", Pattern.DOTALL);
-    private WorkflowProcessInstance processInstance;
+    private ProcessInstance processInstance;
     private String expression;
 
-    public VariableValueMatcher(WorkflowProcessInstance processInstance, String expression) {
+    public VariableValueMatcher(ProcessInstance processInstance, String expression) {
         this.processInstance = processInstance;
         this.expression = expression;
     }
@@ -35,7 +35,7 @@ public class VariableValueMatcher extends TypeSafeMatcher<String> {
     public boolean matchesSafely(String item) {
 
 
-       for(NodeInstance currentNodeInstance : processInstance.getNodeInstances()){
+       for(NodeInstance currentNodeInstance : ((WorkflowProcessInstance)processInstance).getNodeInstances()){
             NodeInstanceImpl currentNode = (NodeInstanceImpl) currentNodeInstance;
             java.util.regex.Matcher matcher = PARAMETER_MATCHER.matcher(this.expression);
             while (matcher.find()) {
@@ -66,7 +66,7 @@ public class VariableValueMatcher extends TypeSafeMatcher<String> {
     }
 
     @Factory
-    public static <T> Matcher<String> variableValue(WorkflowProcessInstance processInstance, String expression) {
+    public static <T> Matcher<String> variableValue(ProcessInstance processInstance, String expression) {
         return new VariableValueMatcher(processInstance, expression);
     }
 

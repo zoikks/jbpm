@@ -1,6 +1,7 @@
 package org.jbpm.test.matcher;
 
 import org.drools.runtime.process.NodeInstance;
+import org.drools.runtime.process.ProcessInstance;
 import org.drools.runtime.process.WorkflowProcessInstance;
 import org.hamcrest.Description;
 import org.hamcrest.Factory;
@@ -17,14 +18,14 @@ import org.junit.internal.matchers.TypeSafeMatcher;
 * To change this template use File | Settings | File Templates.
 */
 public class IsInActivityMatcher extends TypeSafeMatcher<String> {
-    private WorkflowProcessInstance process;
-    public IsInActivityMatcher(WorkflowProcessInstance process){
+    private ProcessInstance process;
+    public IsInActivityMatcher(ProcessInstance process){
        this.process = process;
     }
 
     @Override
     public boolean matchesSafely(String activityName) {
-        for(NodeInstance nodeInstance : process.getNodeInstances()){
+        for(NodeInstance nodeInstance : ((WorkflowProcessInstance)process).getNodeInstances()){
             if(activityName.equals(nodeInstance.getNodeName())){
                 return true;
             }
@@ -36,14 +37,14 @@ public class IsInActivityMatcher extends TypeSafeMatcher<String> {
 
 
     @Factory
-     public static <T> Matcher<String> isInActivity(WorkflowProcessInstance process) {
+     public static <T> Matcher<String> isInActivity(ProcessInstance process) {
        return new IsInActivityMatcher(process);
      }
 
 
     public void describeTo(Description description) {
         description.appendText("the current process is executing the following list of activities: \n");
-         for(NodeInstance nodeInstance : process.getNodeInstances()){
+         for(NodeInstance nodeInstance : ((WorkflowProcessInstance)process).getNodeInstances()){
               description.appendText(" -> "+nodeInstance.getNodeName());
         }
     }
