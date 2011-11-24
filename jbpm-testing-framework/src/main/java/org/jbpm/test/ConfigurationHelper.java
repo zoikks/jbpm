@@ -19,6 +19,9 @@ import org.drools.runtime.EnvironmentName;
 import org.drools.runtime.KnowledgeSessionConfiguration;
 import org.drools.runtime.StatefulKnowledgeSession;
 import org.jbpm.process.audit.JPAWorkingMemoryDbLogger;
+import org.jbpm.task.service.AsyncTaskServiceWrapper;
+import org.jbpm.task.service.TaskClient;
+import org.jbpm.task.service.local.LocalTaskService;
 import org.jbpm.task.service.mina.MinaTaskClientConnector;
 import org.jbpm.task.service.mina.MinaTaskClientHandler;
 import org.jbpm.test.annotation.HumanTaskSupport;
@@ -43,8 +46,10 @@ public class ConfigurationHelper {
     public static final String HUMAN_TASK_PERSISTENCE_UNIT = "human.task.persistence.unit";
     public static final String HUMAN_TASK_HOST = "human.task.host";
     public static final String HUMAN_TASK_PORT = "human.task.port";
+    public static final String HUMAN_TASK_TYPE = "human.task.type";
     
     protected static final String OUTPUT_DIR = System.getProperty("build.dir", "target") + File.separator;
+    
     
 
     public static KnowledgeBase buildKnowledgeBase(Properties jbpmTestConfiguration) {
@@ -91,20 +96,55 @@ public class ConfigurationHelper {
     
     public static TestTaskClient buildTaskClient(Class<?> testClass) {
         HumanTaskSupport htSupport = testClass.getAnnotation(HumanTaskSupport.class);
-        TestTaskClient taskClient = new TestTaskClient(new MinaTaskClientConnector("MinaConnector",
-                new MinaTaskClientHandler(SystemEventListenerFactory.getSystemEventListener())));
-        taskClient.connect(htSupport.host(), htSupport.port());
+        TestTaskClient taskClient = null;
+        switch (htSupport.type()) {
+        case MINA_ASYNC:
+            taskClient = new TestTaskClient(new TaskClient(new MinaTaskClientConnector("MinaConnector",
+                    new MinaTaskClientHandler(SystemEventListenerFactory.getSystemEventListener()))));
+            taskClient.connect(htSupport.host(), htSupport.port());
+            break;
+            
+        case MINA_SYNC:
+            taskClient = new TestTaskClient(new AsyncTaskServiceWrapper(new TaskClient(new MinaTaskClientConnector("MinaConnector",
+                    new MinaTaskClientHandler(SystemEventListenerFactory.getSystemEventListener())))));
+            taskClient.connect(htSupport.host(), htSupport.port());
+            break;
+
+        case LOCAL:
+            taskClient = new TestTaskClient(new LocalTaskService(JbpmJUnitRunner.taskService.getSession()));
+            break;
+        default:
+            break;
+        }
+        
         
         return taskClient;
     }
     
     public static TestTaskClient buildTaskClient(Properties jbpmTestConfiguration) {
         
-        TestTaskClient taskClient = new TestTaskClient(new MinaTaskClientConnector("MinaConnector",
-                new MinaTaskClientHandler(SystemEventListenerFactory.getSystemEventListener())));
-        taskClient.connect(jbpmTestConfiguration.getProperty(HUMAN_TASK_HOST, "localhost"), 
-                Integer.parseInt(jbpmTestConfiguration.getProperty(HUMAN_TASK_PORT, "9123")));
-        
+        TestTaskClient taskClient = null;
+        switch (TaskServerType.valueOf(jbpmTestConfiguration.getProperty(ConfigurationHelper.HUMAN_TASK_TYPE, "MINA_ASYNC"))) {
+        case MINA_ASYNC:
+            taskClient = new TestTaskClient(new TaskClient(new MinaTaskClientConnector("MinaConnector",
+                    new MinaTaskClientHandler(SystemEventListenerFactory.getSystemEventListener()))));
+            taskClient.connect(jbpmTestConfiguration.getProperty(HUMAN_TASK_HOST, "localhost"), 
+                    Integer.parseInt(jbpmTestConfiguration.getProperty(HUMAN_TASK_PORT, "9123")));
+            break;
+            
+        case MINA_SYNC:
+            taskClient = new TestTaskClient(new AsyncTaskServiceWrapper(new TaskClient(new MinaTaskClientConnector("MinaConnector",
+                    new MinaTaskClientHandler(SystemEventListenerFactory.getSystemEventListener())))));
+            taskClient.connect(jbpmTestConfiguration.getProperty(HUMAN_TASK_HOST, "localhost"), 
+                    Integer.parseInt(jbpmTestConfiguration.getProperty(HUMAN_TASK_PORT, "9123")));
+            break;
+
+        case LOCAL:
+            taskClient = new TestTaskClient(new LocalTaskService(JbpmJUnitRunner.taskService.getSession()));
+            break;
+        default:
+            break;
+        }
         return taskClient;
     }
     

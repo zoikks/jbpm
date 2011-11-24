@@ -15,7 +15,7 @@ import org.junit.runner.RunWith;
 @KnowledgeBase(source={"script.bpmn2","service.bpmn2","usertask.bpmn2"}, sharedKey="common")
 @KnowledgeSession(handlers={@WorkItemHandler(taskName="Service Task", handler=ServiceTaskHandler.class),
 		@WorkItemHandler(taskName="Human Task", handler=WSHumanTaskHandler.class)}, logger=Logger.CONSOLE)
-@HumanTaskSupport(persistenceUnit="org.jbpm.task", users={"john", "Administrator"})
+@HumanTaskSupport(persistenceUnit="org.jbpm.task", users={"john", "Administrator"}, type=TaskServerType.LOCAL)
 public class CopyOfJbpmJUnitRunnerTest {
 	
 	protected org.drools.KnowledgeBase knowledgeBase;

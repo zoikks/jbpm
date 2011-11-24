@@ -32,11 +32,31 @@ public class HumanTaskService {
             emf = javax.persistence.Persistence.createEntityManagerFactory(htSupport.persistenceUnit());
             taskService = new TaskService(emf, SystemEventListenerFactory.getSystemEventListener());
             
-            // start server
-            this.taskServer = new TestMinaTaskServer(taskService, htSupport.port(), htSupport.host());
-            this.serverThread = new TaskServerThread(taskServer);
-            serverThread.start();
-            this.setStarted(true);
+            switch (htSupport.type()) {
+            case MINA_ASYNC:
+                // start server
+                this.taskServer = new TestMinaTaskServer(taskService, htSupport.port(), htSupport.host());
+                this.serverThread = new TaskServerThread(taskServer);
+                serverThread.start();
+                this.setStarted(true);
+                break;
+                
+            case MINA_SYNC:
+                // start server
+                this.taskServer = new TestMinaTaskServer(taskService, htSupport.port(), htSupport.host());
+                this.serverThread = new TaskServerThread(taskServer);
+                serverThread.start();
+                this.setStarted(true);
+                break;
+
+            case LOCAL:
+                // start server
+                this.setStarted(true);
+                break;
+            default:
+                break;
+            }
+            
 
             TaskServiceSession session = taskService.createSession();
             for (String user : htSupport.users()) {
@@ -56,11 +76,31 @@ public class HumanTaskService {
             emf = javax.persistence.Persistence.createEntityManagerFactory(jbpmTestConfiguration.getProperty(ConfigurationHelper.HUMAN_TASK_PERSISTENCE_UNIT));
             taskService = new TaskService(emf, SystemEventListenerFactory.getSystemEventListener());
             int port = Integer.parseInt(jbpmTestConfiguration.getProperty(ConfigurationHelper.HUMAN_TASK_PORT, "9123"));
-            // start server
-            this.taskServer = new TestMinaTaskServer(taskService, port, jbpmTestConfiguration.getProperty(ConfigurationHelper.HUMAN_TASK_HOST, "localhost"));
-            this.serverThread = new TaskServerThread(taskServer);
-            serverThread.start();
-            this.setStarted(true);
+            
+            switch (TaskServerType.valueOf(jbpmTestConfiguration.getProperty(ConfigurationHelper.HUMAN_TASK_TYPE, "MINA_ASYNC"))) {
+            case MINA_ASYNC:
+                // start server
+                this.taskServer = new TestMinaTaskServer(taskService, port, jbpmTestConfiguration.getProperty(ConfigurationHelper.HUMAN_TASK_HOST, "localhost"));
+                this.serverThread = new TaskServerThread(taskServer);
+                serverThread.start();
+                this.setStarted(true);
+                break;
+                
+            case MINA_SYNC:
+                // start server
+                this.taskServer = new TestMinaTaskServer(taskService, port, jbpmTestConfiguration.getProperty(ConfigurationHelper.HUMAN_TASK_HOST, "localhost"));
+                this.serverThread = new TaskServerThread(taskServer);
+                serverThread.start();
+                this.setStarted(true);
+                break;
+
+            case LOCAL:
+                // start server
+                this.setStarted(true);
+                break;
+            default:
+                break;
+            }
 
             TaskServiceSession session = taskService.createSession();
             // format should be user-id separated with semicolon ';', for instance user1;user2
@@ -87,7 +127,9 @@ public class HumanTaskService {
     public void stop() {
         if (this.taskServer != null) {
             try {
-                ((MinaTaskServer)this.taskServer).getIoAcceptor().unbind();
+                if (this.taskServer instanceof MinaTaskServer) {
+                    ((MinaTaskServer)this.taskServer).getIoAcceptor().unbind();
+                }
                 this.taskServer.stop();
             } catch (Exception e) {
                 // swallow exception
@@ -127,7 +169,7 @@ public class HumanTaskService {
             try {
                 super.run();
             } catch (Exception e) {
-                // TODO: handle exception
+                // swallow exception
             }
         }
     }
@@ -145,17 +187,22 @@ public class HumanTaskService {
             try {
                 super.run();
             } catch (Exception e) {
-                // TODO: handle exception
+                // swallow exception
             }
         }
 
         @Override
         public void start() throws IOException {
-            
-            super.start();
-            ((SocketSessionConfig)getIoAcceptor().getSessionConfig()).setSoLinger(0);
+            try {
+                super.start();
+                ((SocketSessionConfig)getIoAcceptor().getSessionConfig()).setSoLinger(0);
+            } catch (Exception e) {
+                //swallow exception
+            }
         }
-        
-        
+    }
+    
+    public TaskServiceSession getSession() {
+        return this.taskService.createSession();
     }
 }

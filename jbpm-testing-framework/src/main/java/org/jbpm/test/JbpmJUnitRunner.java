@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.drools.KnowledgeBase;
 import org.drools.runtime.StatefulKnowledgeSession;
-import org.jbpm.task.service.TaskClient;
+import org.jbpm.process.workitem.wsht.SyncWSHumanTaskHandler;
 import org.jbpm.test.annotation.HumanTaskSupport;
 import org.jbpm.test.annotation.KnowledgeSession;
 import org.jbpm.test.annotation.LifeCycle;
@@ -149,10 +149,17 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 		// perform dependency injection
 		Field[] fields = target.getClass().getDeclaredFields();
 		boolean humanTaskRequired = false;
+		boolean humanTaskLocal = false;
 		if (target.getClass().isAnnotationPresent(KnowledgeSession.class)) {
 			humanTaskRequired = target.getClass().isAnnotationPresent(HumanTaskSupport.class);
+			if (humanTaskRequired) {
+			    humanTaskLocal = TaskServerType.LOCAL.equals(target.getClass().getAnnotation(HumanTaskSupport.class).type()) ? true : false;
+			}
 		} else {
 			humanTaskRequired = jbpmTestConfiguration.containsKey(ConfigurationHelper.HUMAN_TASK_PERSISTENCE_UNIT);
+			if (humanTaskRequired) {
+                humanTaskLocal = TaskServerType.LOCAL.equals(TaskServerType.valueOf(jbpmTestConfiguration.getProperty(ConfigurationHelper.HUMAN_TASK_TYPE, "MINA_ASYNC"))) ? true : false;
+            }
 		}
 		for (Field f : fields) {
 			if (KnowledgeBase.class.isAssignableFrom(f.getType())) {
@@ -181,7 +188,7 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 				continue;
 			}
 			
-			if(TaskClient.class.isAssignableFrom(f.getType()) && humanTaskRequired) {
+			if(TestTaskClient.class.isAssignableFrom(f.getType()) && humanTaskRequired) {
 				
 				f.setAccessible(true);
 				try {
@@ -199,6 +206,11 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 				}
 				continue;
 			}
+		}
+		// FIXME this probably should be changed but so far cannot be done since default constructor will
+		// not be sufficient of SyncWSHumanTaskHandler
+		if (humanTaskRequired && humanTaskLocal) {
+		    this.context.getSession().getWorkItemManager().registerWorkItemHandler("Human Task", new SyncWSHumanTaskHandler(this.context.getTaskClient(), this.context.getSession()));
 		}
 		return target;
 	}
