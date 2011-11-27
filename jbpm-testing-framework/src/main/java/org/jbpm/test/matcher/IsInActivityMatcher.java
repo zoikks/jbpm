@@ -6,6 +6,7 @@ import org.drools.runtime.process.WorkflowProcessInstance;
 import org.hamcrest.Description;
 import org.hamcrest.Factory;
 import org.hamcrest.Matcher;
+import org.jbpm.workflow.instance.node.CompositeContextNodeInstance;
 import org.junit.internal.matchers.TypeSafeMatcher;
 
 
@@ -26,7 +27,15 @@ public class IsInActivityMatcher extends TypeSafeMatcher<String> {
     @Override
     public boolean matchesSafely(String activityName) {
         for(NodeInstance nodeInstance : ((WorkflowProcessInstance)process).getNodeInstances()){
-            if(activityName.equals(nodeInstance.getNodeName())){
+            // handle subprocess 
+            if ( nodeInstance instanceof CompositeContextNodeInstance) {
+                for (NodeInstance ni : ((CompositeContextNodeInstance) nodeInstance).getNodeInstances(true)) {
+                    if(activityName.equals(ni.getNodeName())){
+                        return true;
+                    } 
+                }
+            }
+            else if(activityName.equals(nodeInstance.getNodeName())){
                 return true;
             }
         }
