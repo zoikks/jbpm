@@ -1,3 +1,18 @@
+/**
+ * Copyright 2011 JBoss Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.jbpm.test;
 
 import java.lang.reflect.Field;
@@ -19,6 +34,9 @@ import org.junit.runners.model.InitializationError;
 import bitronix.tm.resource.jdbc.PoolingDataSource;
 
 public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
+    
+    public static final String JBPM_TEST_PROPERTIES = "jbpm.test.props";
+    public static final String DATASOURCE_TEST_PROPERTIES = "ds.test.props";
 
 	protected static ConcurrentHashMap<String, KnowledgeBase> kbCache = new ConcurrentHashMap<String, KnowledgeBase>();
 	protected static HumanTaskService taskService;
@@ -27,15 +45,15 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 	static {
 		// setup data source
 		try {
-			if (JbpmJUnitRunner.class.getResource("/jbpm-test.properties") != null) {
+			if (JbpmJUnitRunner.class.getResource(System.getProperty(JBPM_TEST_PROPERTIES, "/jbpm-test.properties")) != null) {
 				jbpmTestConfiguration = new Properties();
-				jbpmTestConfiguration.load(JbpmJUnitRunner.class.getResourceAsStream("/jbpm-test.properties"));
+				jbpmTestConfiguration.load(JbpmJUnitRunner.class.getResourceAsStream(System.getProperty(JBPM_TEST_PROPERTIES, "/jbpm-test.properties")));
 				
 			}
 			
-			if (JbpmJUnitRunner.class.getResource("/datasource.properties") != null) {
+			if (JbpmJUnitRunner.class.getResource(System.getProperty(DATASOURCE_TEST_PROPERTIES, "/datasource.properties")) != null) {
 				Properties props = new Properties();
-				props.load(JbpmJUnitRunner.class.getResourceAsStream("/datasource.properties"));
+				props.load(JbpmJUnitRunner.class.getResourceAsStream(System.getProperty(DATASOURCE_TEST_PROPERTIES, "/datasource.properties")));
 				
 				PoolingDataSource ds = new PoolingDataSource();
 				ds.setUniqueName(props.getProperty("uniqueName"));
@@ -62,7 +80,7 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 		super(testClass);
 		this.context = new Context();
 		this.context.setTestClass(testClass);
-		if (testClass.isAnnotationPresent(KnowledgeSession.class)) {
+		if (testClass.isAnnotationPresent(KnowledgeSession.class) || testClass.isAnnotationPresent(org.jbpm.test.annotation.KnowledgeBase.class)) {
 			this.context.setkBaseDI(ConfigurationHelper.buildKnowledgeBase(testClass));
 			// setup human task service if configured
 			if (taskService == null && testClass.isAnnotationPresent(HumanTaskSupport.class)) {
@@ -88,7 +106,7 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 			if (lifeCycle != null) {
 				this.context.setPhases(lifeCycle.phases());
 			}
-			
+			this.context.setNotifier(notifier);
 		}
 		super.runChild(method, notifier);
 		if (method.getAnnotation(Ignore.class) == null) {
@@ -112,6 +130,7 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 				} catch (Exception e) {
 				}
 			}
+			this.context.setNotifier(null);
 		}
 	}
 	
@@ -119,7 +138,7 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 
 	@Override
 	public void run(RunNotifier notifier) {
-		if (this.context.getTestClass().isAnnotationPresent(KnowledgeSession.class)) {
+		if (this.context.getTestClass().isAnnotationPresent(KnowledgeSession.class) || this.context.getTestClass().isAnnotationPresent(org.jbpm.test.annotation.KnowledgeBase.class)) {
 			if (taskService == null && this.context.getTestClass().isAnnotationPresent(HumanTaskSupport.class)) {
 				taskService = new HumanTaskService();
 				taskService.start((HumanTaskSupport) this.context.getTestClass().getAnnotation(HumanTaskSupport.class));
@@ -150,7 +169,13 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 		Field[] fields = target.getClass().getDeclaredFields();
 		boolean humanTaskRequired = false;
 		boolean humanTaskLocal = false;
-		if (target.getClass().isAnnotationPresent(KnowledgeSession.class)) {
+		
+		// validation variables
+		boolean isKnowledgeBaseSet = false;
+		boolean isKnowledgeSessionSet = false;
+		boolean isTaskClientSet = false;
+		
+		if (target.getClass().isAnnotationPresent(KnowledgeSession.class) || target.getClass().isAnnotationPresent(org.jbpm.test.annotation.KnowledgeBase.class)) {
 			humanTaskRequired = target.getClass().isAnnotationPresent(HumanTaskSupport.class);
 			if (humanTaskRequired) {
 			    humanTaskLocal = TaskServerType.LOCAL.equals(target.getClass().getAnnotation(HumanTaskSupport.class).type()) ? true : false;
@@ -166,6 +191,7 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 				f.setAccessible(true);
 				try {
 					f.set(target, this.context.getkBaseDI());
+					isKnowledgeBaseSet = true;
 				} catch (Exception e) {
 					System.err.println("Not possible to set KnowledgeBase, " + e.getMessage());
 				}
@@ -176,12 +202,13 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 				f.setAccessible(true);
 				try {
 					StatefulKnowledgeSession session = null;
-					if (target.getClass().isAnnotationPresent(KnowledgeSession.class)) {
+					if (target.getClass().isAnnotationPresent(KnowledgeSession.class) || target.getClass().isAnnotationPresent(org.jbpm.test.annotation.KnowledgeBase.class)) {
 						session = ConfigurationHelper.getSession(target.getClass(), currentTestName, context);
 					} else {
 						session = ConfigurationHelper.getSession(jbpmTestConfiguration, currentTestName, target.getClass(), context);
 					}
 					f.set(target, session);
+					isKnowledgeSessionSet = true;
 				} catch (Exception e) {
 					System.err.println("Not possible to set StatefulKnowledgeSession, " + e.getMessage());
 				}
@@ -193,7 +220,7 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 				f.setAccessible(true);
 				try {
 					TestTaskClient taskClient = null;
-					if (target.getClass().isAnnotationPresent(KnowledgeSession.class)) {
+					if (target.getClass().isAnnotationPresent(KnowledgeSession.class) || target.getClass().isAnnotationPresent(org.jbpm.test.annotation.KnowledgeBase.class)) {
 						taskClient = ConfigurationHelper.buildTaskClient(target.getClass());
 					} else {
 						taskClient = ConfigurationHelper.buildTaskClient(jbpmTestConfiguration);
@@ -201,6 +228,7 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 					this.context.setTaskClient(taskClient);
 					this.context.getTaskClient().setPhases(this.context.getPhases());
 					f.set(target, this.context.getTaskClient());
+					isTaskClientSet = true;
 				} catch (Exception e) {
 					System.err.println("Not possible to set TaskClient, " + e.getMessage());
 				}
@@ -212,6 +240,17 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 		if (humanTaskRequired && humanTaskLocal) {
 		    this.context.getSession().getWorkItemManager().registerWorkItemHandler("Human Task", new SyncWSHumanTaskHandler(this.context.getTaskClient(), this.context.getSession()));
 		}
+		
+		// perform validation on configured objects to avoid unexpected errors
+		if (!isKnowledgeBaseSet) {
+		    throw new IllegalStateException("Knowledge base is not set, exiting...");
+		}
+		if (!isKnowledgeSessionSet) {
+            throw new IllegalStateException("Knowledge session is not set, exiting...");
+        }
+		if (humanTaskRequired && !isTaskClientSet) {
+            throw new IllegalStateException("Task client is not set, exiting...");
+        }
 		return target;
 	}
 }

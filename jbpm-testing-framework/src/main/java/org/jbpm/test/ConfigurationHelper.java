@@ -1,3 +1,18 @@
+/**
+ * Copyright 2011 JBoss Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.jbpm.test;
 
 import java.io.File;
@@ -239,6 +254,8 @@ public class ConfigurationHelper {
             }
         }
         context.setDisposeSessionPerTest(Boolean.parseBoolean(jbpmTestConfiguration.getProperty(KNOWLEDGESESSION_DISPOSE_PER_TEST, "true")));
+        context.getSession().addEventListener(new RecordingProcessEventListener());
+        
         return context.getSession();
     }
     protected static StatefulKnowledgeSession getSession(Class<?> testClass, String testName, Context context) {
@@ -275,6 +292,7 @@ public class ConfigurationHelper {
         
         registerWorkItemHandlers(testClass, context.getSession());
         context.setDisposeSessionPerTest(testClass.getAnnotation(KnowledgeSession.class).disposePerTest());
+        context.getSession().addEventListener(new RecordingProcessEventListener());
         return context.getSession();
     }
 }
