@@ -56,19 +56,7 @@ public class VariableValueMatcher extends TypeSafeMatcher<String> {
             while (matcher.find()) {
                 String paramName = matcher.group(1);
 
-
-                try {
-                    
-                    Object variableValue = MVEL.eval(paramName, ((WorkflowProcessInstanceImpl)processInstance).getVariables());
-                    String variableValueString = variableValue == null ? "" : variableValue.toString();
-                    return variableValueString.equals(item);
-                } catch (Throwable t) {
-                    System.err.println("Could not find variable scope for variable " + paramName);
-                    System.err.println("when trying to replace variable in string for process instance " + processInstance);
-                    System.err.println("Continuing without setting parameter.");
-                }
-
-
+                return resolveVariable(paramName, item, ((WorkflowProcessInstanceImpl)processInstance).getVariables());
             }
         } else {
            for(NodeInstance currentNodeInstance : ((WorkflowProcessInstance)processInstance).getNodeInstances()){
@@ -77,18 +65,7 @@ public class VariableValueMatcher extends TypeSafeMatcher<String> {
                 while (matcher.find()) {
                     String paramName = matcher.group(1);
     
-    
-                    try {
-                        Object variableValue = MVEL.eval(paramName, new NodeInstanceResolverFactory(currentNode));
-                        String variableValueString = variableValue == null ? "" : variableValue.toString();
-                        return variableValueString.equals(item);
-                    } catch (Throwable t) {
-                        System.err.println("Could not find variable scope for variable " + paramName);
-                        System.err.println("when trying to replace variable in string for Node " + currentNode.getNodeName());
-                        System.err.println("Continuing without setting parameter.");
-                    }
-    
-    
+                    return resolveVariable(paramName, item, new NodeInstanceResolverFactory(currentNode));
                 }
             }
         }
@@ -106,6 +83,24 @@ public class VariableValueMatcher extends TypeSafeMatcher<String> {
         return new VariableValueMatcher(processInstance, expression);
     }
 
-
+    protected boolean resolveVariable(String paramName, String item, Object input) {
+        try {
+            
+            Object variableValue = MVEL.eval(paramName, input);
+            String variableValueString = variableValue == null ? "" : variableValue.toString();
+            return variableValueString.equals(item);
+        } catch (Throwable t) {
+            Object variableValue = ((WorkflowProcessInstance)processInstance).getVariable(paramName);
+            if (variableValue != null) {
+                String variableValueString = variableValue.toString();
+                return variableValueString.equals(item);
+            }
+            
+            System.err.println("Could not find variable scope for variable " + paramName);
+            System.err.println("when trying to replace variable in string for process instance " + processInstance);
+            System.err.println("Continuing without setting parameter.");
+            return false;
+        }
+    }
 }
 
