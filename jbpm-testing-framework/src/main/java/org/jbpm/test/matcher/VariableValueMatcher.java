@@ -18,6 +18,7 @@ package org.jbpm.test.matcher;
 
 
 import java.util.regex.Pattern;
+
 import org.drools.runtime.process.NodeInstance;
 import org.drools.runtime.process.ProcessInstance;
 import org.drools.runtime.process.WorkflowProcessInstance;
@@ -26,6 +27,7 @@ import org.hamcrest.Factory;
 import org.hamcrest.Matcher;
 import org.jbpm.workflow.instance.impl.NodeInstanceImpl;
 import org.jbpm.workflow.instance.impl.NodeInstanceResolverFactory;
+import org.jbpm.workflow.instance.impl.WorkflowProcessInstanceImpl;
 import org.junit.internal.matchers.TypeSafeMatcher;
 import org.mvel2.MVEL;
 /**
@@ -48,29 +50,48 @@ public class VariableValueMatcher extends TypeSafeMatcher<String> {
 
     @Override
     public boolean matchesSafely(String item) {
-
-
-       for(NodeInstance currentNodeInstance : ((WorkflowProcessInstance)processInstance).getNodeInstances()){
-            NodeInstanceImpl currentNode = (NodeInstanceImpl) currentNodeInstance;
+        
+        if (ProcessInstance.STATE_COMPLETED == processInstance.getState() || ProcessInstance.STATE_ABORTED == processInstance.getState()) {
             java.util.regex.Matcher matcher = PARAMETER_MATCHER.matcher(this.expression);
             while (matcher.find()) {
                 String paramName = matcher.group(1);
 
 
                 try {
-                    Object variableValue = MVEL.eval(paramName, new NodeInstanceResolverFactory(currentNode));
+                    
+                    Object variableValue = MVEL.eval(paramName, ((WorkflowProcessInstanceImpl)processInstance).getVariables());
                     String variableValueString = variableValue == null ? "" : variableValue.toString();
                     return variableValueString.equals(item);
                 } catch (Throwable t) {
                     System.err.println("Could not find variable scope for variable " + paramName);
-                    System.err.println("when trying to replace variable in string for Node " + currentNode.getNodeName());
+                    System.err.println("when trying to replace variable in string for process instance " + processInstance);
                     System.err.println("Continuing without setting parameter.");
                 }
 
 
             }
+        } else {
+           for(NodeInstance currentNodeInstance : ((WorkflowProcessInstance)processInstance).getNodeInstances()){
+                NodeInstanceImpl currentNode = (NodeInstanceImpl) currentNodeInstance;
+                java.util.regex.Matcher matcher = PARAMETER_MATCHER.matcher(this.expression);
+                while (matcher.find()) {
+                    String paramName = matcher.group(1);
+    
+    
+                    try {
+                        Object variableValue = MVEL.eval(paramName, new NodeInstanceResolverFactory(currentNode));
+                        String variableValueString = variableValue == null ? "" : variableValue.toString();
+                        return variableValueString.equals(item);
+                    } catch (Throwable t) {
+                        System.err.println("Could not find variable scope for variable " + paramName);
+                        System.err.println("when trying to replace variable in string for Node " + currentNode.getNodeName());
+                        System.err.println("Continuing without setting parameter.");
+                    }
+    
+    
+                }
+            }
         }
-
 
         return false;
     }
