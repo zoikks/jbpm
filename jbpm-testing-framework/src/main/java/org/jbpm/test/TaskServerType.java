@@ -19,5 +19,7 @@ public enum TaskServerType {
 
     MINA_ASYNC,
     MINA_SYNC,
+    HORNETQ_ASYNC,
+    HORNETQ_SYNC,
     LOCAL;
 }

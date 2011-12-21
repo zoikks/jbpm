@@ -21,7 +21,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.drools.KnowledgeBase;
 import org.drools.runtime.StatefulKnowledgeSession;
-import org.jbpm.process.workitem.wsht.SyncWSHumanTaskHandler;
 import org.jbpm.test.annotation.HumanTaskSupport;
 import org.jbpm.test.annotation.KnowledgeSession;
 import org.jbpm.test.annotation.LifeCycle;
@@ -221,9 +220,9 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 				try {
 					TestTaskClient taskClient = null;
 					if (target.getClass().isAnnotationPresent(KnowledgeSession.class) || target.getClass().isAnnotationPresent(org.jbpm.test.annotation.KnowledgeBase.class)) {
-						taskClient = ConfigurationHelper.buildTaskClient(target.getClass());
+						taskClient = ConfigurationHelper.buildTaskClient(target.getClass(), this.context);
 					} else {
-						taskClient = ConfigurationHelper.buildTaskClient(jbpmTestConfiguration);
+						taskClient = ConfigurationHelper.buildTaskClient(jbpmTestConfiguration, this.context);
 					}
 					this.context.setTaskClient(taskClient);
 					this.context.getTaskClient().setPhases(this.context.getPhases());
@@ -234,11 +233,6 @@ public class JbpmJUnitRunner extends BlockJUnit4ClassRunner {
 				}
 				continue;
 			}
-		}
-		// FIXME this probably should be changed but so far cannot be done since default constructor will
-		// not be sufficient of SyncWSHumanTaskHandler
-		if (humanTaskRequired && humanTaskLocal) {
-		    this.context.getSession().getWorkItemManager().registerWorkItemHandler("Human Task", new SyncWSHumanTaskHandler(this.context.getTaskClient(), this.context.getSession()));
 		}
 		
 		// perform validation on configured objects to avoid unexpected errors

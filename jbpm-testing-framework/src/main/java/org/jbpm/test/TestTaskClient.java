@@ -55,6 +55,8 @@ public class TestTaskClient implements TaskService, AsyncTaskService {
 	private TaskService taskService = null;
 	private AsyncTaskService asyncTaskService = null;
 	
+	private boolean connected = false;
+	
 	public TestTaskClient(TaskService taskService) {
         this.taskService = taskService;
     }
@@ -921,21 +923,29 @@ public class TestTaskClient implements TaskService, AsyncTaskService {
     }
 
     public boolean connect() {
-        if (this.asyncTaskService != null) {
-            return this.asyncTaskService.connect();
-        } else {
-            return this.taskService.connect();
+        if (this.connected) {
+            return true;
         }
-        
+        if (this.asyncTaskService != null) {
+            connected = this.asyncTaskService.connect(); 
+            
+        } else {
+            connected = this.taskService.connect();
+            
+        }
+        return connected;
     }
 
     public boolean connect(String address, int port) {
-        if (this.asyncTaskService != null) {
-            return this.asyncTaskService.connect(address, port);
-        } else {
-            return this.taskService.connect(address, port);
+        if (this.connected) {
+            return true;
         }
-        
+        if (this.asyncTaskService != null) {
+            connected = this.asyncTaskService.connect(address, port);
+        } else {
+            connected = this.taskService.connect(address, port);
+        }
+        return connected;
     }
 
     public void disconnect() throws Exception {
@@ -945,7 +955,7 @@ public class TestTaskClient implements TaskService, AsyncTaskService {
         } else {
             this.taskService.disconnect();
         }
-        
+        connected = false;
     }
 
     public void registerForEvent(EventKey key, boolean remove,

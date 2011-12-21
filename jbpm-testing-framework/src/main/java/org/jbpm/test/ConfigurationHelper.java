@@ -34,8 +34,12 @@ import org.drools.runtime.EnvironmentName;
 import org.drools.runtime.KnowledgeSessionConfiguration;
 import org.drools.runtime.StatefulKnowledgeSession;
 import org.jbpm.process.audit.JPAWorkingMemoryDbLogger;
+import org.jbpm.process.workitem.wsht.AsyncWSHumanTaskHandler;
+import org.jbpm.process.workitem.wsht.SyncWSHumanTaskHandler;
 import org.jbpm.task.service.AsyncTaskServiceWrapper;
 import org.jbpm.task.service.TaskClient;
+import org.jbpm.task.service.hornetq.HornetQTaskClientConnector;
+import org.jbpm.task.service.hornetq.HornetQTaskClientHandler;
 import org.jbpm.task.service.local.LocalTaskService;
 import org.jbpm.task.service.mina.MinaTaskClientConnector;
 import org.jbpm.task.service.mina.MinaTaskClientHandler;
@@ -109,7 +113,7 @@ public class ConfigurationHelper {
         return kbuilder.newKnowledgeBase();
     }
     
-    public static TestTaskClient buildTaskClient(Class<?> testClass) {
+    public static TestTaskClient buildTaskClient(Class<?> testClass, Context context) {
         HumanTaskSupport htSupport = testClass.getAnnotation(HumanTaskSupport.class);
         TestTaskClient taskClient = null;
         switch (htSupport.type()) {
@@ -123,10 +127,25 @@ public class ConfigurationHelper {
             taskClient = new TestTaskClient(new AsyncTaskServiceWrapper(new TaskClient(new MinaTaskClientConnector("MinaConnector",
                     new MinaTaskClientHandler(SystemEventListenerFactory.getSystemEventListener())))));
             taskClient.connect(htSupport.host(), htSupport.port());
+            context.getSession().getWorkItemManager().registerWorkItemHandler("Human Task", new SyncWSHumanTaskHandler(taskClient, context.getSession()));
             break;
-
+            
+        case HORNETQ_ASYNC:
+            taskClient = new TestTaskClient(new TaskClient(new HornetQTaskClientConnector("HornetQConnector",
+                    new HornetQTaskClientHandler(SystemEventListenerFactory.getSystemEventListener()))));
+            taskClient.connect(htSupport.host(), htSupport.port());
+            context.getSession().getWorkItemManager().registerWorkItemHandler("Human Task", new AsyncWSHumanTaskHandler(taskClient, context.getSession()));
+            break;
+            
+        case HORNETQ_SYNC:
+            taskClient = new TestTaskClient(new AsyncTaskServiceWrapper(new TaskClient(new HornetQTaskClientConnector("HornetQConnector",
+                    new HornetQTaskClientHandler(SystemEventListenerFactory.getSystemEventListener())))));
+            taskClient.connect(htSupport.host(), htSupport.port());
+            context.getSession().getWorkItemManager().registerWorkItemHandler("Human Task", new SyncWSHumanTaskHandler(taskClient, context.getSession()));
+            break;
         case LOCAL:
             taskClient = new TestTaskClient(new LocalTaskService(JbpmJUnitRunner.taskService.getSession()));
+            context.getSession().getWorkItemManager().registerWorkItemHandler("Human Task", new SyncWSHumanTaskHandler(taskClient, context.getSession()));
             break;
         default:
             break;
@@ -136,7 +155,7 @@ public class ConfigurationHelper {
         return taskClient;
     }
     
-    public static TestTaskClient buildTaskClient(Properties jbpmTestConfiguration) {
+    public static TestTaskClient buildTaskClient(Properties jbpmTestConfiguration, Context context) {
         
         TestTaskClient taskClient = null;
         switch (TaskServerType.valueOf(jbpmTestConfiguration.getProperty(ConfigurationHelper.HUMAN_TASK_TYPE, "MINA_ASYNC"))) {
@@ -153,9 +172,26 @@ public class ConfigurationHelper {
             taskClient.connect(jbpmTestConfiguration.getProperty(HUMAN_TASK_HOST, "localhost"), 
                     Integer.parseInt(jbpmTestConfiguration.getProperty(HUMAN_TASK_PORT, "9123")));
             break;
+            
+        case HORNETQ_ASYNC:
+            taskClient = new TestTaskClient(new TaskClient(new HornetQTaskClientConnector("HornetQConnector",
+                    new HornetQTaskClientHandler(SystemEventListenerFactory.getSystemEventListener()))));
+            taskClient.connect(jbpmTestConfiguration.getProperty(HUMAN_TASK_HOST, "localhost"), 
+                    Integer.parseInt(jbpmTestConfiguration.getProperty(HUMAN_TASK_PORT, "5446")));
+            context.getSession().getWorkItemManager().registerWorkItemHandler("Human Task", new AsyncWSHumanTaskHandler(taskClient, context.getSession()));
+            break;
+            
+        case HORNETQ_SYNC:
+            taskClient = new TestTaskClient(new AsyncTaskServiceWrapper(new TaskClient(new HornetQTaskClientConnector("HornetQConnector",
+                    new HornetQTaskClientHandler(SystemEventListenerFactory.getSystemEventListener())))));
+            taskClient.connect(jbpmTestConfiguration.getProperty(HUMAN_TASK_HOST, "localhost"), 
+                    Integer.parseInt(jbpmTestConfiguration.getProperty(HUMAN_TASK_PORT, "5446")));
+            context.getSession().getWorkItemManager().registerWorkItemHandler("Human Task", new SyncWSHumanTaskHandler(taskClient, context.getSession()));
+            break;
 
         case LOCAL:
             taskClient = new TestTaskClient(new LocalTaskService(JbpmJUnitRunner.taskService.getSession()));
+            context.getSession().getWorkItemManager().registerWorkItemHandler("Human Task", new SyncWSHumanTaskHandler(taskClient, context.getSession()));
             break;
         default:
             break;

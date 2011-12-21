@@ -27,6 +27,7 @@ import org.jbpm.task.User;
 import org.jbpm.task.service.TaskServer;
 import org.jbpm.task.service.TaskService;
 import org.jbpm.task.service.TaskServiceSession;
+import org.jbpm.task.service.hornetq.HornetQTaskServer;
 import org.jbpm.task.service.mina.MinaTaskServer;
 import org.jbpm.test.annotation.HumanTaskSupport;
 
@@ -63,16 +64,34 @@ public class HumanTaskService {
                 serverThread.start();
                 this.setStarted(true);
                 break;
+                
+            case HORNETQ_ASYNC:
+                // start server
+                this.taskServer = new HornetQTaskServer(taskService, htSupport.port());
+                this.serverThread = new Thread(taskServer);
+                serverThread.start();
+                waitForTaskServer();
+                this.setStarted(true);
+                break;
+                
+            case HORNETQ_SYNC:
+                // start server
+                this.taskServer = new HornetQTaskServer(taskService, htSupport.port());
+                this.serverThread = new Thread(taskServer);
+                serverThread.start();
+                waitForTaskServer();
+                this.setStarted(true);
+                break;
 
             case LOCAL:
                 // start server
                 this.setStarted(true);
                 break;
+                
             default:
                 break;
             }
             
-
             TaskServiceSession session = taskService.createSession();
             for (String user : htSupport.users()) {
                 session.addUser(new User(user));
@@ -108,7 +127,24 @@ public class HumanTaskService {
                 serverThread.start();
                 this.setStarted(true);
                 break;
-
+                
+            case HORNETQ_ASYNC:
+                // start server
+                this.taskServer = new HornetQTaskServer(taskService, port);
+                this.serverThread = new Thread(taskServer);
+                serverThread.start();
+                waitForTaskServer();
+                this.setStarted(true);
+                break;
+                
+            case HORNETQ_SYNC:
+                // start server
+                this.taskServer = new HornetQTaskServer(taskService, port);
+                this.serverThread = new Thread(taskServer);
+                serverThread.start();
+                waitForTaskServer();
+                this.setStarted(true);
+                break;
             case LOCAL:
                 // start server
                 this.setStarted(true);
@@ -219,5 +255,16 @@ public class HumanTaskService {
     
     public TaskServiceSession getSession() {
         return this.taskService.createSession();
+    }
+    
+    protected void waitForTaskServer() {
+        System.out.println("Waiting for the Task Server to come up");
+        while (!taskServer.isRunning()) {
+            System.out.print(".");
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+            }
+        }
     }
 }
