@@ -350,21 +350,36 @@ public class SyncWSHumanTaskHandler implements WorkItemHandler {
 				results.put("ActorId", userId);
 				long contentId = task.getTaskData().getOutputContentId();
 				if (contentId != -1) {
+					
+					
+					/**
+					 MarshalledContentWrapper val = (MarshalledContentWrapper)entry.getValue();
+                
+                     Environment env = EnvironmentFactory.newEnvironment();
+                     ContentMarshallerContext cmc = new ContentMarshallerContext();
+                     ObjectMarshallingStrategy[] strats = (ObjectMarshallingStrategy[])env.get(EnvironmentName.OBJECT_MARSHALLING_STRATEGIES);
+                     cmc.addStrategy(strats[0]);     // Should only have one option here...
+                     Object o = ContentMarshallerHelper.unmarshall("org.drools.marshalling.impl.SerializablePlaceholderResolverStrategy", val.getContent(), cmc, env);
+					 */
+					
+					
+					
 					Content content = client.getContent(contentId);
-                                        Object result = ContentMarshallerHelper.unmarshall(task.getTaskData().getDocumentType(), content.getContent(), marshallerContext, session.getEnvironment());
+                    
+					Object result = ContentMarshallerHelper.unmarshall(task.getTaskData().getDocumentType(), content.getContent(), marshallerContext, session.getEnvironment());
 					results.put("Result", result);
-                                        if (result instanceof Map) {
-                                            Map<?, ?> map = (Map) result;
-                                            for (Map.Entry<?, ?> entry: map.entrySet()) {
-						if (entry.getKey() instanceof String) {
-                                                    results.put((String) entry.getKey(), entry.getValue());
-						}
-                                            }
+                    if (result instanceof Map) {
+                    	Map<?, ?> map = (Map) result;
+                    	for (Map.Entry<?, ?> entry: map.entrySet()) {
+                    		if (entry.getKey() instanceof String) {
+                    			results.put((String) entry.getKey(), entry.getValue());
+                    		}
+                    	}
 					}
 					if (session != null) {
-                                            session.getWorkItemManager().completeWorkItem(task.getTaskData().getWorkItemId(), results);
+						session.getWorkItemManager().completeWorkItem(task.getTaskData().getWorkItemId(), results);
 					} else {
-                                            manager.completeWorkItem(task.getTaskData().getWorkItemId(), results);
+						manager.completeWorkItem(task.getTaskData().getWorkItemId(), results);
 					}
 					
 				} else {

@@ -158,6 +158,10 @@ public class LocalTaskService implements TaskService {
     }
 
     public Task getTask(long taskId) {
+    	
+    	Task task = session.getTask(taskId);
+    	session.getTaskPersistenceManager().refreshEntity(task);
+    	
         return session.getTask(taskId);
     }
 

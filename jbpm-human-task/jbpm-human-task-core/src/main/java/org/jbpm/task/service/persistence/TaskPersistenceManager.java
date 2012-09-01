@@ -170,6 +170,8 @@ public class TaskPersistenceManager {
         
         em.persist(task);
         endTransaction(txOwner);
+        
+		em.refresh(task);
     }
     
     
@@ -185,6 +187,10 @@ public class TaskPersistenceManager {
     
     public Object findEntity(Class<?> entityClass, Object primaryKey) { 
         return this.em.find(entityClass, primaryKey);
+    }
+
+	public void refreshEntity(Object entity) { 
+    	this.em.refresh(entity); 
     }
     
     public void deleteEntity(Object entity) { 

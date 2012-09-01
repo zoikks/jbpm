@@ -10,6 +10,7 @@
   </parent>
   <artifactId>jbpm-human-task-core</artifactId>
   <name>jBPM :: Human Task Core</name>
+  <version>5.3.0-HWCIR</version>
 
 
   <dependencies>

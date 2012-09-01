@@ -119,7 +119,8 @@ public class ContentMarshallerHelper {
         return contentWrap;
     }
 
-    public static Object unmarshall(String type, byte[] content, ContentMarshallerContext marshallerContext, Environment env) {
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+	public static Object unmarshall(String type, byte[] content, ContentMarshallerContext marshallerContext, Environment env) {
 
         ObjectMarshallingStrategy[] strats = null;
         if (env != null && env.get(EnvironmentName.OBJECT_MARSHALLING_STRATEGIES) != null) {
@@ -154,26 +155,37 @@ public class ContentMarshallerHelper {
                 ObjectInputStream oIn = null;
                 Map localData = new HashMap();
                 for (Object key : ((Map) data).keySet()) {
-                    MarshalledContentWrapper value = (MarshalledContentWrapper) ((Map) data).get(key);
-                    Object unmarshalledObj = null;
-
-                    for (ObjectMarshallingStrategy strat : strats) {
-                        if (strat.getClass().getCanonicalName().equals(value.getMarshaller())) {
-                            selectedStrat = strat;
-                        }
-                    }
-                    context = marshallerContext.strategyContext.get(selectedStrat.getClass());
-                    if (marshallerContext.isUseMarshal()) {
-                        unmarshalledObj = selectedStrat.unmarshal(context, null, value.getContent(), ContentMarshallerHelper.class.getClassLoader());
-                    } else {
-                        bs = new ByteArrayInputStream(value.getContent());
-                        oIn = new ObjectInputStream(bs);
-                        unmarshalledObj = selectedStrat.read(oIn);
-                        oIn.close();
-                        bs.close();
-                    }
-
-                    localData.put(key, unmarshalledObj);
+                	
+                	Object tempVal = ((Map)data).get(key);
+                	
+                	if (tempVal instanceof MarshalledContentWrapper) {
+                		
+                		Object unmarshalledObj = null;
+                	
+	                    MarshalledContentWrapper value = (MarshalledContentWrapper) ((Map) data).get(key);                    
+	
+	                    for (ObjectMarshallingStrategy strat : strats) {
+	                        if (strat.getClass().getCanonicalName().equals(value.getMarshaller())) {
+	                            selectedStrat = strat;
+	                        }
+	                    }
+	                    context = marshallerContext.strategyContext.get(selectedStrat.getClass());
+	                    if (marshallerContext.isUseMarshal()) {
+	                        unmarshalledObj = selectedStrat.unmarshal(context, null, value.getContent(), ContentMarshallerHelper.class.getClassLoader());
+	                    } else {
+	                        bs = new ByteArrayInputStream(value.getContent());
+	                        oIn = new ObjectInputStream(bs);
+	                        unmarshalledObj = selectedStrat.read(oIn);
+	                        oIn.close();
+	                        bs.close();
+	                    }
+	
+	                    localData.put(key, unmarshalledObj);
+                	}
+                	else {
+                		String value = (String)((Map)data).get(key);
+                		localData.put(key, value);
+                	}
                 }
                 data = localData;
             }

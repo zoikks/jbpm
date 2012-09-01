@@ -444,6 +444,8 @@ public class TaskServiceSession {
             
             tpm.endTransaction(transactionOwner);
             
+            tpm.refreshEntity(task);
+            
         } catch (RuntimeException re) {
             
             // We may not be the tx owner -- but something has gone wrong.
